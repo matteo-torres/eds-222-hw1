@@ -1,7 +1,17 @@
 ---
 title: "EDS 222: Homework 1"
-date: "Assigned: 9/26/2024, Due: 10/14/2024"
+date: "10/14/2024"
 author: "Matteo Torres"
+execute: 
+  eval: true
+  message: false
+  warning: false
+  output: false
+format:
+  html:
+    toc: true
+editor_options:
+  chunk_output_type: console
 ---
 
 ## Background
@@ -24,6 +34,14 @@ In answering the following questions, please consider the lecture content from c
 
 ## Assessment
 
+```{r}
+# Load packages
+library(here)
+library(dplyr)
+library(ggplot2)
+library(gridExtra)
+```
+
 ### Question 1
 
 Load the data from each source and label it as `crowdsourced` and `govt` accordingly. For example:
@@ -32,17 +50,54 @@ Load the data from each source and label it as `crowdsourced` and `govt` accordi
 crowdsourced <- readRDS(file.path("data", "airpol-PK-crowdsourced.RDS"))
 govt <- readRDS(file.path("data", "airpol-PK-govt.RDS"))
 ```
-
 ::: callout-warning
 There's an implicit assumption about file organization in the code above. What is it? How can you make the code work?
 :::
 
+I used the "here" package to help create a file path from my home directory to my data folder, "HW1." I successfully read the data by starting at the "HW1" folder and calling the file name I want to assign to each variable.
+
+```{r}
+# Read in data
+crowdsourced <- readRDS(here::here("HW1", "airpol-PK-crowdsourced.RDS"))
+govt <- readRDS(here::here("HW1", "airpol-PK-govt.RDS"))
+```
+
 1.  These dataframes have one row per pollution observation. How many pollution records are in each dataset?
+```{r}
+# Check number of rows/columns
+dim(crowdsourced) # 5488 observations
+dim(govt) # 1960 observations
+```
+
+The crowdsourced dataset has 5488 pollution records and the government dataset has 1960 pollution records.
+
 2.  Each monitor is located at a unique latitude and longitude location. How many unique monitors are in each dataset?
 
 ::: callout-tip
 `group_by(longitude,latitude)` and `cur_group_id()` in `dplyr` will help in creating a unique identifier for each (longitude, latitude) pair.
 :::
+
+```{r}
+# Create a column for monitors in crowdsourced df
+cs_monitors <- crowdsourced %>%
+  group_by(longitude, latitude) %>%
+  mutate(monitors = cur_group_id())
+
+# Count unique monitors
+length(unique(cs_monitors$monitors)) # 14 monitors
+```
+
+```{r}
+# Create a column for monitors in govt df
+g_monitors <- govt %>%
+  group_by(longitude, latitude) %>%
+  mutate(monitors = cur_group_id())
+
+# Count unique monitors
+length(unique(g_monitors$monitors)) # 5 monitors
+```
+
+The crowdsourced dataset has 14 unique monitors and the government dataset has 5 unique monitors.
 
 ### Question 2
 
@@ -50,15 +105,52 @@ The goal of pollution monitoring in Lahore is to measure the average pollution c
 
 1.  What is the *population* in this setting? Please be precise.
 
+The population in this study is Lahore, Pakistan. This city has approximately 11.1 million people.
+
 2.  What are the *samples* in this setting? Please be precise.
 
+The samples in this study consist of air quality monitors that were crowdsourced from volunteers' homes, as well as monitors installed by government officials at select locations across Lahore that are deemed "cleaner."
+
 3.  These samples were not randomly collected from across locations in Lahore. Given the sampling approaches described above, discuss possible biases that may enter when we use these samples to construct estimates of population parameters.
+
+One potential bias is volunteer bias, as the participants who choose to take part in the study might be limited or concentrated in specific locations in the city. This can negatively impact the results of the study because it may not be a representative example of the population. Additionally, there might be a selection bias for government monitors, as the chosen areas were selected based on their cleaner air quality standards rather than through random selection. This could impact the accuracy of the PM measurements collected for the study.
 
 ### Question 3
 
 1.  For both the government data and the crowd-sourced data, report the sample mean, sample minimum, and sample maximum value of PM 2.5 (measured in $\mu g/m^3$).
+
+```{r}
+# Sample mean, min, and max of PM for crowdsourced data
+mean(crowdsourced$PM) # 70.2008
+min(crowdsourced$PM) # 20
+max(crowdsourced$PM) # 120
+```
+The sample mean is 70.2 $\mu g/m^3$.
+
+The sample minimum is 20 $\mu g/m^3$.
+
+The sample maximum is 120 $\mu g/m^3$.
+
+
+```{r}
+# Sample mean, min, and max of PM for govt data
+mean(govt$PM) # 39.64694
+min(govt$PM) # 15
+max(govt$PM) # 65
+```
+The sample mean is 39.6 $\mu g/m^3$.
+
+The sample minimum is 15 $\mu g/m^3$.
+
+The sample maximum is 65 $\mu g/m^3$.
+
 2.  Discuss any key differences that you see between these two samples.
+
+Both datasets have similar minimum values; however, the maximum value from the crowdsourced dataset is nearly double the maximum value from the government dataset. The significantly higher mean value also supports the idea that, on average, most crowdsourced data points are higher than the maximum value of the government dataset.
+
 3.  Are the differences in mean pollution as expected, given what we know about the sampling strategies?
+
+I believe the differences in mean pollution are as expected based on the sampling strategies because government monitoring was intended to have significantly lower PM readings than the crowdsourced monitoring to mitigate domestic and international pressures.
 
 ### Question 4
 
@@ -67,6 +159,25 @@ Use the location of the air pollution stations for both of the sampling strategi
 ::: callout-tip
 `longitude` indicates location in the *x*-direction, while `latitude` indicates location in the *y*-direction. With `ggplot2` this should be nothing fancy. We'll do more spatial data in `R` later in the course.
 :::
+
+```{r, output = TRUE}
+# Define colors for plot
+legend_colors <- c("crowdsourced" = "red", "government" = "blue")
+
+# Make plot of air pollution stations
+stations <- ggplot() +
+  geom_point(data = crowdsourced, aes(x = longitude, y = latitude, color = "crowdsourced")) +
+  geom_point(data = govt, aes(x = longitude, y = latitude, color = "government")) +
+  labs(x = "Longitude",
+       y = "Latitude",
+       title = "Air Pollution Stations in Lahore, Pakistan",
+       color = "Legend") +
+  scale_color_manual(values = legend_colors) +
+  theme_bw()
+
+# Display plot
+stations
+```
 
 ### Question 5
 
