@@ -37,9 +37,7 @@ In answering the following questions, please consider the lecture content from c
 ```{r}
 # Load packages
 library(here)
-library(dplyr)
-library(ggplot2)
-library(gridExtra)
+library(tidyverse)
 ```
 
 ### Question 1
@@ -183,6 +181,8 @@ stations
 
 The local newspaper in Pakistan, *Dawn*, claims that the government is misreporting the air pollution levels in Lahore. Do the locations of monitors in question 4, relative to crowd-sourced monitors, suggest anything about a possible political bias?
 
+Yes, the government monitors are concentrated in a small area of Lahore, Pakistan. They purposefully do not portray average PM measurements across the entire city. This suggests that there is political bias because the government is censoring significant information, air quality data, from the public that could potentially help improve the quality of life. This minimizes the issues of pollution and public health to make politicians/leaders look more palatable.
+
 ### Question 6
 
 Given the recent corruption in air quality reporting, the Prime Minister of Pakistan has hired an independent body of environmental data scientists to create an unbiased estimate of the mean PM 2.5 across Lahore using some combination of both government stations and crowd sourced observations.
@@ -197,8 +197,42 @@ First, generate a *random sample* of size $n=1000$ air pollution records by (i) 
 `bind_rows()` may be helpful.
 :::
 
+```{r}
+# Combine both crowdsourced and govt datasets
+combined <- bind_rows(crowdsourced, govt)
+
+# Collect a random sample of 1000 observations
+samp_1000 <- combined %>%
+  sample_n(1000)
+
+# Find the mean
+mean(samp_1000$PM)
+```
+
 Second, create a *stratified random sample*. Do so by (i) stratifying your pooled data-set into strata of 0.01 degrees of latitude, and (ii) randomly sampling 200 air pollution observations from each stratum.
+
+```{r}
+# Create a new column with stratified data (0.01 degrees lat)
+combined <- combined %>%
+  mutate(strat_2 = round(latitude, 2))
+
+# Check df
+combined
+
+# Collect a random sample of 200 observations
+samp_200 <- combined %>%
+  group_by(strat_2) %>%
+  sample_n(200) %>%
+  ungroup()
+
+# Find the mean
+mean(samp_200$PM)
+```
 
 #### Question 6.2
 
 Compare estimated means of PM 2.5 for each sampling strategy to the NASA estimate of 89.2 $\mu g/m^3$. Which sample seems to match the satellite data best? What would you recommend the Prime Minister do? Does your proposed sampling strategy rely more on government or on crowd-sourced data? Why might that be the case?
+
+The stratified random sample seems to best match the satellite data because it does not rely solely on government monitors. The purpose of the strata is to reduce the influence of government monitors on assessing air quality for the entire city, as they only cover a small localized portion. This approach provides the opportunity to sample and study other areas of Lahore. Overall, I recommend that the Prime Minister advocates for the people by expanding government monitors and endorsing the use of the stratified dataset for reporting.
+
+
