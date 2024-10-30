@@ -36,7 +36,6 @@ In answering the following questions, please consider the lecture content from c
 
 ```{r}
 # Load packages
-library(here)
 library(tidyverse)
 ```
 
@@ -52,12 +51,12 @@ govt <- readRDS(file.path("data", "airpol-PK-govt.RDS"))
 There's an implicit assumption about file organization in the code above. What is it? How can you make the code work?
 :::
 
-I used the "here" package to help create a file path from my home directory to my data folder, "HW1." I successfully read the data by starting at the "HW1" folder and calling the file name I want to assign to each variable.
+I successfully made the file path work from the root directory by starting at the "HW1" data folder then calling the file name I want to assign to each variable.
 
 ```{r}
 # Read in data
-crowdsourced <- readRDS(here::here("HW1", "airpol-PK-crowdsourced.RDS"))
-govt <- readRDS(here::here("HW1", "airpol-PK-govt.RDS"))
+crowdsourced <- readRDS(file.path("HW1", "airpol-PK-crowdsourced.RDS"))
+govt <- readRDS(file.path("HW1", "airpol-PK-govt.RDS"))
 ```
 
 1.  These dataframes have one row per pollution observation. How many pollution records are in each dataset?
@@ -103,11 +102,11 @@ The goal of pollution monitoring in Lahore is to measure the average pollution c
 
 1.  What is the *population* in this setting? Please be precise.
 
-The population in this study is Lahore, Pakistan. This city has approximately 11.1 million people.
+The population in this study is the air quality in all of Lahore, Pakistan between November 2018 and November 2019.
 
 2.  What are the *samples* in this setting? Please be precise.
 
-The samples in this study consist of air quality monitors that were crowdsourced from volunteers' homes, as well as monitors installed by government officials at select locations across Lahore that are deemed "cleaner."
+The samples in this study are both the crowdsourced and government sourced datasets.
 
 3.  These samples were not randomly collected from across locations in Lahore. Given the sampling approaches described above, discuss possible biases that may enter when we use these samples to construct estimates of population parameters.
 
@@ -201,12 +200,15 @@ First, generate a *random sample* of size $n=1000$ air pollution records by (i) 
 # Combine both crowdsourced and govt datasets
 combined <- bind_rows(crowdsourced, govt)
 
-# Collect a random sample of 1000 observations
+# Check number of rows/columns
+dim(combined) # 7448 observations
+
+# Collect a random sample of 1000 observations from the combined dataset
 samp_1000 <- combined %>%
   sample_n(1000)
 
-# Find the mean
-mean(samp_1000$PM)
+# Verify sample size
+dim(samp_1000)
 ```
 
 Second, create a *stratified random sample*. Do so by (i) stratifying your pooled data-set into strata of 0.01 degrees of latitude, and (ii) randomly sampling 200 air pollution observations from each stratum.
@@ -216,23 +218,57 @@ Second, create a *stratified random sample*. Do so by (i) stratifying your poole
 combined <- combined %>%
   mutate(strat_2 = round(latitude, 2))
 
-# Check df
-combined
+# Verify new column
+dim(combined) # 5 columns
 
-# Collect a random sample of 200 observations
+# Collect a random sample of 200 observations from each stratum
 samp_200 <- combined %>%
   group_by(strat_2) %>%
   sample_n(200) %>%
   ungroup()
 
-# Find the mean
-mean(samp_200$PM)
+# Verify sample size
+dim(samp_200) # 1000 (200 from each group)
 ```
 
 #### Question 6.2
 
 Compare estimated means of PM 2.5 for each sampling strategy to the NASA estimate of 89.2 $\mu g/m^3$. Which sample seems to match the satellite data best? What would you recommend the Prime Minister do? Does your proposed sampling strategy rely more on government or on crowd-sourced data? Why might that be the case?
 
-The stratified random sample seems to best match the satellite data because it does not rely solely on government monitors. The purpose of the strata is to reduce the influence of government monitors on assessing air quality for the entire city, as they only cover a small localized portion. This approach provides the opportunity to sample and study other areas of Lahore. Overall, I recommend that the Prime Minister advocates for the people by expanding government monitors and endorsing the use of the stratified dataset for reporting.
+```{r}
+# Mean PM 2.5 for random
+mean(samp_1000$PM)
+
+# Mean PM 2.5 for stratified
+mean(samp_200$PM)
+```
+
+random sample mean < stratified sample mean
+
+The stratified random sample seems to match the NASA satellite data best. I recommend that the Prime Minister advocates for the people by expanding government monitors and endorsing the use of the stratified dataset for reporting.
+
+```{r}
+# monitors of the stratified data
+monitors_samp <- samp_200 %>%
+  group_by(longitude, latitude) %>%
+  mutate(monitors = cur_group_id())
+
+# number of observations per monitor
+monitors_samp %>%
+  group_by(monitors) %>%
+  summarize(n())
+
+# government monitors from stratified data based on lat/long
+monitors_samp %>%
+  filter(monitors %in% c(2, 3, 5, 6, 7)) %>%
+  nrow() # observations from govt data
+
+# crowdsourced monitors from stratified data based on lat/long
+monitors_samp %>% 
+  filter(monitors %in% c(1, 4, 8:19)) %>%
+  nrow() # observations from crowdsourced data
+```
+
+As you can see above, the stratified data relies more on crowdsourced data. The purpose of the strata is to reduce the influence of government monitors on assessing air quality for the entire city, as they only cover a small localized portion. This approach provides the opportunity to sample and study other areas of Lahore. 
 
 
